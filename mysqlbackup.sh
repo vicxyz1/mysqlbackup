@@ -1,6 +1,7 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
 # MySQL database backup (databases in separate files) with daily, weekly and monthly rotation
+# v0.0.2
 
 # Sebastian Flippence (http://seb.flippence.uk) originally based on code from: Ameir Abdeldayem (http://www.ameir.net)
 # You are free to modify and distribute this code,
@@ -77,6 +78,11 @@ echo "Backing up MySQL databases..."
 
 for database in $DBS; do
 	echo "${database}..."
+
+	if [ $database = "information_schema" ]; then
+		echo "Skipping ${database}..."
+		continue
+	fi
 
 	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --default-character-set=utf8 --skip-set-charset --routines --disable-keys --force --single-transaction --allow-keywords --dump-date $database > ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # MySQL database backup (databases in separate files) with daily, weekly and monthly rotation
-# v0.0.2
+# v0.0.3
 
 # Sebastian Flippence (http://seb.flippence.uk) originally based on code from: Ameir Abdeldayem (http://www.ameir.net)
 # You are free to modify and distribute this code,
@@ -65,6 +65,10 @@ else
 	echo "Created backup directory (${BACKDIR})"
 fi
 
+if  [ ! -e "logs" ]; then
+	mkdir -p "logs"
+fi
+
 if  [ $DUMPALL = "y" ]; then
 	echo "Creating list of databases on: ${HOST}..."
 
@@ -84,7 +88,7 @@ for database in $DBS; do
 		continue
 	fi
 
-	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --default-character-set=utf8 --skip-set-charset --routines --disable-keys --force --single-transaction --allow-keywords --dump-date $database > ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
+	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --skip-extended-insert --routines --allow-keywords --dump-date $database --result-file=${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=logs/${SERVER}-MySQL-backup-$database-${DATE}-error.log
 
 	bzip2 -f ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
 done

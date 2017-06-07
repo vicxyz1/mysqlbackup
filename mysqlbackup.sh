@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # MySQL database backup (databases in separate files) with daily, weekly and monthly rotation
-# v0.0.3
+# v0.0.4
 
 # Sebastian Flippence (http://seb.flippence.uk) originally based on code from: Ameir Abdeldayem (http://www.ameir.net)
 # You are free to modify and distribute this code,
@@ -27,7 +27,6 @@ fi
 # Setup some command defaults (can be overriden by the config)
 MYSQL=${MYSQL:-`which mysql`}
 MYSQLDUMP=${MYSQLDUMP:-`which mysqldump`}
-PHP=${PHP:-`which php`}
 
 # Date format that is appended to filename
 DATE=`date +'%Y-%m-%d'`
@@ -83,14 +82,14 @@ echo "Backing up MySQL databases..."
 for database in $DBS; do
 	echo "${database}..."
 
-	if [ $database = "information_schema" ]; then
+	if [ $database = "information_schema" ] || [ $database = "mysql" ] || [ $database = "performance_schema" ] || [ $database = "sys" ]; then
 		echo "Skipping ${database}..."
 		continue
 	fi
 
 	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --skip-extended-insert --routines --allow-keywords --dump-date $database --result-file=${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=logs/${SERVER}-MySQL-backup-$database-${DATE}-error.log
 
-	bzip2 -f ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
+	tar --remove-files -czvf ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql.tar.gz ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
 done
 
 if  [ $DUMPALL = "y" ]; then
@@ -98,14 +97,14 @@ if  [ $DUMPALL = "y" ]; then
 fi
 
 if [ $MOVETAR = "y" ]; then
-echo "Moving sql.bz2 files to tar"
-	for file in `ls ${BACKDIR}/*.bz2`; do
+echo "Moving sql.gz files to tar"
+	for file in `ls ${BACKDIR}/*.gz`; do
 		tar -rf ${BACKDIR}/${SERVER}-MySQL-backup-${DATE}.tar $file
 		rm $file
 	done
 	EXT="tar"
 else
-	EXT="sql.bz2"
+	EXT="tar.gz"
 fi
 
 # If you have the mail program 'mutt' installed on
@@ -160,7 +159,7 @@ if  [ $ROTATE = "y" ]; then
 	fi
 
 	# Weekly backups
-	WEEK_NO=`$PHP -r 'echo ceil(date("j", time())/7);'`
+	WEEK_NO=`date +%V`
 	DATE_WEEK="`date +'%Y-%m-'`$WEEK_NO"
 
 	if [ ! -d $ARCHIVE_PATH/$WEEKLY_PATH/$DATE_WEEK ] && [ "$MAX_WEEKS" -gt "0" ]; then

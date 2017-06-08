@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # MySQL database backup (databases in separate files) with daily, weekly and monthly rotation
-# v0.0.4
+# v0.0.5
 
 # Sebastian Flippence (http://seb.flippence.uk) originally based on code from: Ameir Abdeldayem (http://www.ameir.net)
 # You are free to modify and distribute this code,
@@ -33,9 +33,8 @@ DATE=`date +'%Y-%m-%d'`
 
 # Setup paths
 ARCHIVE_PATH="${BACKDIR}/${ARCHIVE_PATH}"
-
-ORGBACKDIR="${BACKDIR}"
-BACKDIR="${BACKDIR}/${LATEST_PATH}/${DATE}"
+CURRENT_BACKDIR="${BACKDIR}/${LATEST_PATH}/${DATE}"
+MYSQL_LOGS="${BACKDIR}/logs/mysql"
 
 function checkMysqlUp() {
 	$MYSQL -N -h $HOST --user=$USER --password=$PASS -e status
@@ -57,24 +56,24 @@ trap 'error ${LINENO}' ERR
 
 # Check backup directory exists
 # if not, create it
-if  [ -e $BACKDIR ]; then
-	echo "Backup directory exists (${BACKDIR})"
+if  [ -e $CURRENT_BACKDIR ]; then
+	echo "Backup directory exists (${CURRENT_BACKDIR})"
 else
-	mkdir -p $BACKDIR
-	echo "Created backup directory (${BACKDIR})"
+	mkdir -p $CURRENT_BACKDIR
+	echo "Created backup directory (${CURRENT_BACKDIR})"
 fi
 
-if  [ ! -e "logs" ]; then
-	mkdir -p "logs"
+if  [ ! -e $MYSQL_LOGS ]; then
+	mkdir -p $MYSQL_LOGS
 fi
 
 if  [ $DUMPALL = "y" ]; then
 	echo "Creating list of databases on: ${HOST}..."
 
-	$MYSQL -N -h $HOST --user=$USER --password=$PASS -e "show databases;" > ${BACKDIR}/dbs_on_${SERVER}.txt
+	$MYSQL -N -h $HOST --user=$USER --password=$PASS -e "show databases;" > ${CURRENT_BACKDIR}/dbs_on_${SERVER}.txt
 
 	# redefine list of databases to be backed up
-	DBS=`sed -e ':a;N;$!ba;s/\n/ /g' -e 's/Database //g' ${BACKDIR}/dbs_on_${SERVER}.txt`
+	DBS=`sed -e ':a;N;$!ba;s/\n/ /g' -e 's/Database //g' ${CURRENT_BACKDIR}/dbs_on_${SERVER}.txt`
 fi
 
 echo "Backing up MySQL databases..."
@@ -87,19 +86,19 @@ for database in $DBS; do
 		continue
 	fi
 
-	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --skip-extended-insert --routines --allow-keywords --dump-date $database --result-file=${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=logs/${SERVER}-MySQL-backup-$database-${DATE}-error.log
+	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --skip-extended-insert --routines --allow-keywords --dump-date $database --result-file=${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=${MYSQL_LOGS}/${SERVER}-MySQL-backup-$database-error.log
 
-	tar --remove-files -czvf ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql.tar.gz ${BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
+	tar --remove-files -czvf ${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql.tar.gz ${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
 done
 
 if  [ $DUMPALL = "y" ]; then
-	rm ${BACKDIR}/dbs_on_${SERVER}.txt
+	rm ${CURRENT_BACKDIR}/dbs_on_${SERVER}.txt
 fi
 
 if [ $MOVETAR = "y" ]; then
 echo "Moving sql.gz files to tar"
-	for file in `ls ${BACKDIR}/*.gz`; do
-		tar -rf ${BACKDIR}/${SERVER}-MySQL-backup-${DATE}.tar $file
+	for file in `ls ${CURRENT_BACKDIR}/*.gz`; do
+		tar -rf ${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-${DATE}.tar $file
 		rm $file
 	done
 	EXT="tar"
@@ -113,7 +112,7 @@ fi
 
 if  [ $MAIL = "y" ] && [ $EMAILSENDON = $EMAILTODAY  ]; then
 	BODY="MySQL backup is ready"
-	ATTACH=`for file in ${BACKDIR}/*${DATE}.${EXT}; do echo -n "-a ${file} ";  done`
+	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.${EXT}; do echo -n "-a ${file} ";  done`
 
 	echo "${BODY}" | mutt -s "${SUBJECT}" $ATTACH $EMAILS
 
@@ -122,8 +121,8 @@ fi
 
 if  [ $FTP = "y" ]; then
 	echo "Initiating FTP connection..."
-	cd $BACKDIR
-	ATTACH=`for file in ${BACKDIR}/*${DATE}.${EXT}; do echo -n -e "put ${file}\n"; done`
+	cd $CURRENT_BACKDIR
+	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.${EXT}; do echo -n -e "put ${file}\n"; done`
 
 	ftp -nv <<EOF
 open $FTPHOST
@@ -146,7 +145,7 @@ if  [ $ROTATE = "y" ]; then
 	if [ ! -d $ARCHIVE_PATH/$DAILY_PATH/$DATE ] && [ "$MAX_DAYS" -gt "0" ]; then
 		mkdir -p $ARCHIVE_PATH/$DAILY_PATH/$DATE
 		# Copy files into archive dir
-		find $BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$DAILY_PATH/$DATE/. \;
+		find $CURRENT_BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$DAILY_PATH/$DATE/. \;
 	fi
 
 	# Delete old daily backups
@@ -165,7 +164,7 @@ if  [ $ROTATE = "y" ]; then
 	if [ ! -d $ARCHIVE_PATH/$WEEKLY_PATH/$DATE_WEEK ] && [ "$MAX_WEEKS" -gt "0" ]; then
 		mkdir -p $ARCHIVE_PATH/$WEEKLY_PATH/$DATE_WEEK
 		# Copy files into archive dir
-		find $BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$WEEKLY_PATH/$DATE_WEEK/. \;
+		find $CURRENT_BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$WEEKLY_PATH/$DATE_WEEK/. \;
 	fi
 
 	# Delete old weekly backups
@@ -183,7 +182,7 @@ if  [ $ROTATE = "y" ]; then
 	if [ ! -d $ARCHIVE_PATH/$MONTHLY_PATH/$DATE_MONTH ] && [ "$MAX_MONTHS" -gt "0" ]; then
 		mkdir -p $ARCHIVE_PATH/$MONTHLY_PATH/$DATE_MONTH
 		# Copy files into archive dir
-		find $BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$MONTHLY_PATH/$DATE_MONTH/. \;
+		find $CURRENT_BACKDIR -name "*.$EXT" -exec cp {} $ARCHIVE_PATH/$MONTHLY_PATH/$DATE_MONTH/. \;
 	fi
 
 	# Delete old monthly backups
@@ -197,7 +196,7 @@ if  [ $ROTATE = "y" ]; then
 
 
 	# Delete old backups in latest folder (-mtime +0 is 24 hours or older)
-	find $ORGBACKDIR/$LATEST_PATH/ -maxdepth 1 -type d ! -name $LATEST_PATH -mtime +0 -exec rm -Rf {} \;
+	find $BACKDIR/$LATEST_PATH/ -maxdepth 1 -type d ! -name $LATEST_PATH -mtime +0 -exec rm -Rf {} \;
 
 	echo "Backups rotation complete"
 fi

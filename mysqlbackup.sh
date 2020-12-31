@@ -122,12 +122,13 @@ fi
 if  [ $FTP = "y" ]; then
 	echo "Initiating FTP connection..."
 	cd $CURRENT_BACKDIR
-	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.${EXT}; do echo -n -e "put ${file}\n"; done`
+	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.sql.${EXT}; do echo -n -e "put $(basename $file)\n"; done`
 
 	ftp -nv <<EOF
 open $FTPHOST
 user $FTPUSER $FTPPASS
 cd $FTPDIR
+passive
 $ATTACH
 quit
 EOF

@@ -86,7 +86,7 @@ for database in $DBS; do
 		continue
 	fi
 
-	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --skip-extended-insert --routines --allow-keywords --dump-date $database --result-file=${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=${MYSQL_LOGS}/${SERVER}-MySQL-backup-$database-error.log
+	$MYSQLDUMP --host=$HOST --user=$USER --password=$PASS --opt --default-character-set=utf8 --routines --allow-keywords --dump-date $database --result-file=${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql --log-error=${MYSQL_LOGS}/${SERVER}-MySQL-backup-$database-error.log
 
 	tar --remove-files -czvf ${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql.tar.gz ${CURRENT_BACKDIR}/${SERVER}-MySQL-backup-$database-${DATE}.sql
 done

@@ -140,13 +140,23 @@ if  [ "${SFTP:-n}" = "y" ]; then
 	cd $CURRENT_BACKDIR
 	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.sql.${EXT}; do echo -n -e "put $(basename $file)\n"; done`
 	SFTP_PORT=${SFTPPORT:-22}
-	SFTP_OPTIONS="-P $SFTP_PORT"
+	SFTP_OPTIONS=("-P" "$SFTP_PORT")
+	SFTP_COMMAND=(sftp)
 
 	if [ -n "${SFTPKEY:-}" ]; then
-		SFTP_OPTIONS="$SFTP_OPTIONS -i $SFTPKEY"
+		SFTP_OPTIONS+=("-i" "$SFTPKEY")
 	fi
 
-	sftp $SFTP_OPTIONS "$SFTPUSER@$SFTPHOST" <<EOF
+	if [ -n "${SFTPPASS:-}" ]; then
+		if ! command -v sshpass >/dev/null 2>&1; then
+			echo "sshpass is required when SFTPPASS is set"
+			exit 1
+		fi
+
+		SFTP_COMMAND=(sshpass -e sftp)
+	fi
+
+	SSHPASS="${SFTPPASS:-}" "${SFTP_COMMAND[@]}" "${SFTP_OPTIONS[@]}" "$SFTPUSER@$SFTPHOST" <<EOF
 cd $SFTPDIR
 $ATTACH
 quit

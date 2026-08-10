@@ -11,9 +11,12 @@ A bash script to store databases in separate files with daily, weekly and monthl
 Copy `mysqlbackup.sample.conf` to: `mysqlbackup.conf` and customise as necessary.
 
 Backups can be transferred to a remote server with FTP or SFTP. To use SFTP,
-set `SFTP="y"` and configure `SFTPHOST`, `SFTPUSER`, `SFTPPORT`, `SFTPKEY`, and
-`SFTPDIR` in `mysqlbackup.conf`. `SFTPKEY` is optional; leave it empty to use
-your default SSH keys or password authentication.
+set `SFTP="y"` and configure `SFTPHOST`, `SFTPUSER`, `SFTPPASS`, `SFTPPORT`,
+`SFTPKEY`, and `SFTPDIR` in `mysqlbackup.conf`.
+
+For password authentication, set `SFTPPASS` and leave `SFTPKEY` empty. This
+requires `sshpass` on the machine running the backup. For key authentication,
+set `SFTPKEY` and leave `SFTPPASS` empty.
 
 ## Background
 

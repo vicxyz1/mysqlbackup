@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # MySQL database backup (databases in separate files) with daily, weekly and monthly rotation
-# v0.0.5
+# v0.0.6
 
 # Sebastian Flippence (http://seb.flippence.uk) originally based on code from: Ameir Abdeldayem (http://www.ameir.net)
 # You are free to modify and distribute this code,
@@ -133,6 +133,25 @@ $ATTACH
 quit
 EOF
 	echo -e  "FTP transfer complete"
+fi
+
+if  [ "${SFTP:-n}" = "y" ]; then
+	echo "Initiating SFTP connection..."
+	cd $CURRENT_BACKDIR
+	ATTACH=`for file in ${CURRENT_BACKDIR}/*${DATE}.sql.${EXT}; do echo -n -e "put $(basename $file)\n"; done`
+	SFTP_PORT=${SFTPPORT:-22}
+	SFTP_OPTIONS="-P $SFTP_PORT"
+
+	if [ -n "${SFTPKEY:-}" ]; then
+		SFTP_OPTIONS="$SFTP_OPTIONS -i $SFTPKEY"
+	fi
+
+	sftp $SFTP_OPTIONS "$SFTPUSER@$SFTPHOST" <<EOF
+cd $SFTPDIR
+$ATTACH
+quit
+EOF
+	echo -e  "SFTP transfer complete"
 fi
 
 if  [ $ROTATE = "y" ]; then

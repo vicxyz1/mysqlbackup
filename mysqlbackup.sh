@@ -25,8 +25,14 @@ else
 fi
 
 # Setup some command defaults (can be overriden by the config)
-MYSQL=${MYSQL:-`which mysql`}
-MYSQLDUMP=${MYSQLDUMP:-`which mysqldump`}
+DB_CLIENT=${DB_CLIENT:-mysql}
+if [ "$DB_CLIENT" = "mariadb" ]; then
+	MYSQL=${MYSQL:-`which mariadb`}
+	MYSQLDUMP=${MYSQLDUMP:-`which mariadb-dump`}
+else
+	MYSQL=${MYSQL:-`which mysql`}
+	MYSQLDUMP=${MYSQLDUMP:-`which mysqldump`}
+fi
 
 # Date format that is appended to filename
 DATE=`date +'%Y-%m-%d'`

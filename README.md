@@ -10,6 +10,15 @@ A bash script to store databases in separate files with daily, weekly and monthl
 
 Copy `mysqlbackup.sample.conf` to: `mysqlbackup.conf` and customise as necessary.
 
+On MariaDB systems where `mysql` and `mysqldump` show deprecation warnings, set:
+
+```
+DB_CLIENT="mariadb"
+```
+
+This makes the script use `mariadb` and `mariadb-dump` by default. You can still
+set `MYSQL` and `MYSQLDUMP` directly if you need custom command paths.
+
 Backups can be transferred to a remote server with FTP or SFTP. To use SFTP,
 set `SFTP="y"` and configure `SFTPHOST`, `SFTPUSER`, `SFTPPASS`, `SFTPPORT`,
 `SFTPKEY`, and `SFTPDIR` in `mysqlbackup.conf`.
